@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: unless-stopped
+
+    ports:
+      - "5432:5432"   # local only (secure)
+
+    env_file:
+      - ./env/postgres.env
+
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
+
+    # 🔥 Memory limits
+    mem_limit: 2g
+    memswap_limit: 2g
+    shm_size: 512m
+
+  postgres-backup:
+    image: prodrigestivill/postgres-backup-local
+    container_name: postgres-backup
+    restart: unless-stopped
+
+    depends_on:
+      - postgres
+
+    env_file:
+      - ./env/postgres.env
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: appdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: strongpassword
+
+      BACKUP_DIR: /backups
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+      BACKUP_SCHEDULE: "0 */6 * * *"   # every 6 hours
+
+    volumes:
+      - ./backup:/backups
+
+volumes:
+  pgdata:
